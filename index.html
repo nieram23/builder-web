@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Builder — Leurres de pêche</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#2563eb;--accent-light:#eff6ff;--border:#e2e8f0;--radius:8px;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9}
+body{font-family:system-ui,sans-serif;color:var(--text);background:var(--bg);height:100vh;overflow:hidden}
+.app{display:grid;grid-template-columns:260px 1fr;height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-tabs{display:flex;border-bottom:1px solid var(--border)}
+.stab{flex:1;padding:10px 6px;font-size:12px;font-weight:500;text-align:center;cursor:pointer;background:none;border:none;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s}
+.stab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--accent-light)}
+.sidebar-content{flex:1;overflow-y:auto;padding:12px}
+.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:12px 0 6px}
+.block-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.block-btn{padding:10px 6px;border:1px dashed var(--border);border-radius:6px;background:var(--surface2);cursor:grab;font-size:11px;text-align:center;transition:all .15s;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:4px;user-select:none}
+.block-btn:hover{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+.block-icon{font-size:18px}
+.main{display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:8px;height:48px;flex-shrink:0}
+.tab-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--border);font-size:13px;font-weight:500;cursor:pointer;background:none;color:var(--muted);transition:all .15s}
+.tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.topbar-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{padding:7px 14px;border-radius:6px;border:1px solid var(--border);font-size:12px;cursor:pointer;font-weight:500;background:var(--surface);color:var(--text);transition:all .15s}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#1d4ed8}
+.btn-danger{background:#ef4444;color:#fff;border-color:#ef4444}
+.canvas-wrap{flex:1;overflow-y:auto;padding:16px;background:var(--surface2)}
+.canvas{max-width:720px;margin:0 auto;min-height:400px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative}
+.canvas.drag-over{outline:2px dashed var(--accent);outline-offset:2px}
+.canvas-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--muted);gap:8px;min-height:300px}
+.canvas-empty-icon{font-size:36px;opacity:.4}
+.canvas-empty-text{font-size:13px;text-align:center;line-height:1.5}
+.block-wrapper{position:relative;cursor:pointer;transition:outline .1s}
+.block-wrapper:hover{outline:2px solid var(--accent)}
+.block-wrapper.selected{outline:2px solid var(--accent)}
+.block-actions{position:absolute;top:4px;right:4px;display:none;gap:4px;z-index:10}
+.block-wrapper:hover .block-actions,.block-wrapper.selected .block-actions{display:flex}
+.block-action-btn{width:26px;height:26px;border-radius:4px;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);color:#fff;transition:background .15s}
+.block-action-btn:hover{background:rgba(0,0,0,.9)}
+.props-panel{padding:12px}
+.prop-group{margin-bottom:16px}
+.prop-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block;margin-top:10px}
+.prop-input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:var(--surface);color:var(--text);outline:none}
+.prop-input:focus{border-color:var(--accent)}
+.prop-textarea{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;resize:vertical;min-height:60px;background:var(--surface);color:var(--text);outline:none}
+.prop-textarea:focus{border-color:var(--accent)}
+.color-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.color-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.color-swatch.active{border-color:var(--accent);transform:scale(1.2)}
+.font-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.font-btn{padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;background:none;color:var(--text);transition:all .15s}
+.font-btn.active,.font-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.size-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.size-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;background:none;color:var(--text);transition:all .15s}
+.size-btn.active,.size-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.align-row{display:flex;gap:4px;margin-bottom:6px}
+.align-btn{padding:4px 14px;border:1px solid var(--border);border-radius:4px;font-size:13px;cursor:pointer;background:none;color:var(--text);transition:all .15s}
+.align-btn.active,.align-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.no-selection{padding:20px 12px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6}
+.preview-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.preview-inner{background:#fff;border-radius:10px;width:100%;max-width:840px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column}
+.preview-header{padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px}
+.preview-body{overflow-y:auto;flex:1}
+.preview-close{padding:6px 14px;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;font-size:12px;background:none}
+.columns-layout{display:grid;gap:12px}
+.col-2{grid-template-columns:1fr 1fr}
+.col-3{grid-template-columns:1fr 1fr 1fr}
+.col-left{grid-template-columns:2fr 1fr}
+.col-right{grid-template-columns:1fr 2fr}
+.column-drop-zone{min-height:60px;border:1px dashed #cbd5e1;border-radius:6px;padding:8px;transition:background .15s}
+.column-drop-zone.drag-over{background:#eff6ff;border-color:#2563eb}
+.range-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.range-row input[type=range]{flex:1}
+.range-val{font-size:11px;min-width:32px;text-align:right;color:var(--muted)}
+.img-upload-btn{width:100%;padding:8px;border:1px dashed var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;font-size:12px;color:var(--muted);text-align:center;transition:all .15s;display:block;margin-top:4px}
+.img-upload-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sep{height:1px;background:var(--border);margin:12px 0}
+.toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;animation:fadeup .3s ease;pointer-events:none}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.template-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tpl-btn{padding:10px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;font-size:11px;text-align:center;color:var(--text);transition:all .15s}
+.tpl-btn:hover{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <button class="stab active" onclick="switchSTab(0)">Blocs</button>
+      <button class="stab" onclick="switchSTab(1)">Propriétés</button>
+    </div>
+
+    <!-- TAB BLOCS -->
+    <div class="sidebar-content" id="stab-blocks">
+      <div class="section-label">Templates rapides</div>
+      <div class="template-grid">
+        <button class="tpl-btn" onclick="loadTemplate('vente')">🎣 Page de vente</button>
+        <button class="tpl-btn" onclick="loadTemplate('nl')">📧 Newsletter</button>
+      </div>
+      <div class="sep"></div>
+      <div class="section-label">Mise en page</div>
+      <div class="block-grid">
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'columns')" onclick="addBlock('columns')"><span class="block-icon">⬜⬜</span>Colonnes</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'divider')" onclick="addBlock('divider')"><span class="block-icon">➖</span>Séparateur</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'spacer')" onclick="addBlock('spacer')"><span class="block-icon">↕</span>Espace</div>
+      </div>
+      <div class="section-label">Contenu</div>
+      <div class="block-grid">
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'hero')" onclick="addBlock('hero')"><span class="block-icon">🦸</span>Bannière</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'heading')" onclick="addBlock('heading')"><span class="block-icon">T</span>Titre</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'text')" onclick="addBlock('text')"><span class="block-icon">¶</span>Texte</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'image')" onclick="addBlock('image')"><span class="block-icon">🖼</span>Image</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'button')" onclick="addBlock('button')"><span class="block-icon">🔘</span>Bouton</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'price')" onclick="addBlock('price')"><span class="block-icon">💰</span>Prix</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'list')" onclick="addBlock('list')"><span class="block-icon">✅</span>Liste</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'badge')" onclick="addBlock('badge')"><span class="block-icon">🏷</span>Badge</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'card')" onclick="addBlock('card')"><span class="block-icon">🃏</span>Carte produit</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'gallery')" onclick="addBlock('gallery')"><span class="block-icon">🖼🖼</span>Galerie</div>
+      </div>
+      <div class="section-label">Newsletter</div>
+      <div class="block-grid">
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'nl_header')" onclick="addBlock('nl_header')"><span class="block-icon">📧</span>En-tête NL</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'nl_article')" onclick="addBlock('nl_article')"><span class="block-icon">📰</span>Article NL</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'nl_cta')" onclick="addBlock('nl_cta')"><span class="block-icon">📣</span>CTA NL</div>
+        <div class="block-btn" draggable="true" ondragstart="dragStart(event,'nl_footer')" onclick="addBlock('nl_footer')"><span class="block-icon">📩</span>Pied NL</div>
+      </div>
+    </div>
+
+    <!-- TAB PROPRIETES -->
+    <div class="sidebar-content" id="stab-props" style="display:none">
+      <div id="props-content"><div class="no-selection">Cliquez sur un bloc pour modifier ses propriétés.</div></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <button class="tab-btn active" id="tab-vente" onclick="switchTab('vente')">🎣 Page de vente</button>
+      <button class="tab-btn" id="tab-nl" onclick="switchTab('nl')">📧 Newsletter</button>
+      <div class="topbar-right">
+        <button class="btn" onclick="clearCanvas()">🗑 Vider</button>
+        <button class="btn" onclick="saveToLocal()">💾 Sauvegarder</button>
+        <button class="btn" onclick="previewPage()">👁 Aperçu</button>
+        <button class="btn btn-primary" onclick="exportHTML()">⬇ Exporter HTML</button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <div class="canvas" id="canvas"
+        ondragover="canvasDragOver(event)"
+        ondrop="canvasDrop(event)"
+        ondragleave="canvasDragLeave(event)"
+        onclick="canvasClick(event)">
+        <div class="canvas-empty" id="canvas-empty">
+          <div class="canvas-empty-icon">🎣</div>
+          <div class="canvas-empty-text">Glissez des blocs ici<br>ou cliquez sur un bloc dans la barre de gauche<br><br><small style="opacity:.6">Utilisez les templates rapides pour démarrer vite !</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APERCU -->
+<div class="preview-modal" id="preview-modal" style="display:none" onclick="if(event.target===this)closePreview()">
+  <div class="preview-inner">
+    <div class="preview-header">
+      <strong style="font-size:13px">👁 Aperçu — <span id="preview-title"></span></strong>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="exportFromPreview()">⬇ Exporter HTML</button>
+        <button class="preview-close" onclick="closePreview()">Fermer ✕</button>
+      </div>
+    </div>
+    <div class="preview-body" id="preview-body"></div>
+  </div>
+</div>
+
+<script>
+var state = {
+  tab: 'vente',
+  stab: 0,
+  pages: { vente: [], nl: [] },
+  selected: null,
+  dragType: null,
+  idCounter: 0
+};
+
+var COLORS = ['#ffffff','#f8fafc','#f1f5f9','#e2e8f0','#1e293b','#374151','#2563eb','#0ea5e9','#10b981','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#064e3b','#1e3a5f','#7c3aed','#dc2626'];
+var FONTS = ['system-ui','Georgia','Arial','Verdana','Tahoma','Courier New','Impact','Trebuchet MS'];
+var FONT_LABELS = ['Système','Georgia','Arial','Verdana','Tahoma','Courier','Impact','Trebuchet'];
+
+function uid(){ return 'b'+(++state.idCounter)+'_'+Date.now(); }
+
+function defaultBlock(type){
+  var id=uid(), base={id,type,bg:'#ffffff',padding:16};
+  switch(type){
+    case 'heading': return Object.assign({},base,{text:'Titre de section',size:'xl',color:'#1e293b',align:'left',font:'Georgia',bold:true});
+    case 'text': return Object.assign({},base,{text:'Votre texte ici. Décrivez votre produit, votre offre, votre histoire.',size:'md',color:'#374151',align:'left',font:'system-ui'});
+    case 'hero': return Object.assign({},base,{bg:'#1e3a5f',text:'Nos leurres artisanaux',subtext:'Fabriqués avec passion, conçus pour attraper.',btnText:'Découvrir',btnColor:'#f59e0b',color:'#ffffff',imgUrl:''});
+    case 'image': return Object.assign({},base,{imgUrl:'',alt:'Image',width:100,radius:0,align:'center'});
+    case 'button': return Object.assign({},base,{text:'Commander maintenant',color:'#ffffff',btnColor:'#2563eb',align:'center',radius:6,size:'md'});
+    case 'price': return Object.assign({},base,{price:'12,90 €',label:'Leurre artisanal',oldPrice:'',color:'#1e293b',accent:'#2563eb'});
+    case 'list': return Object.assign({},base,{items:'✅ Fabriqué à la main\n✅ Matériaux résistants\n✅ Efficace toutes saisons',color:'#374151',size:'md'});
+    case 'badge': return Object.assign({},base,{text:'NOUVEAU',bg:'#fef3c7',color:'#92400e',align:'center'});
+    case 'card': return Object.assign({},base,{imgUrl:'',title:'Nom du leurre',desc:'Description courte du produit.',price:'9,90 €',btnText:'Ajouter',btnColor:'#2563eb'});
+    case 'gallery': return Object.assign({},base,{images:['','',''],radius:6,cols:3});
+    case 'divider': return Object.assign({},base,{color:'#e2e8f0',height:1});
+    case 'spacer': return Object.assign({},base,{height:32});
+    case 'columns': return Object.assign({},base,{layout:'col-2',cols:[{id:uid(),blocks:[]},{id:uid(),blocks:[]}]});
+    case 'nl_header': return Object.assign({},base,{bg:'#1e3a5f',title:'La Lettre des Leurres',subtitle:'Newsletter — Avril 2025',color:'#ffffff'});
+    case 'nl_article': return Object.assign({},base,{title:'Le leurre de la semaine',text:'Cette semaine, découvrez notre dernier modèle de surface, idéal pour la pêche au brochet en zones herbeuses.',imgUrl:''});
+    case 'nl_cta': return Object.assign({},base,{text:'Commandez avant le 30 avril et bénéficiez de -10% sur votre panier !',btnText:'Je commande',btnColor:'#2563eb',color:'#ffffff',bg:'#0ea5e9'});
+    case 'nl_footer': return Object.assign({},base,{text:'© L\'Atelier des Leurres — Lycée Chausson, Aubusson\nPour vous désabonner, répondez STOP.',color:'#64748b'});
+    default: return base;
+  }
+}
+
+// TEMPLATES
+var TEMPLATES = {
+  vente: function(){
+    var hero = defaultBlock('hero');
+    hero.text = 'Leurres artisanaux 🎣';
+    hero.subtext = 'Fabriqués à la main par les élèves du Lycée Chausson';
+    hero.btnText = 'Voir la collection';
+    var badge = defaultBlock('badge');
+    badge.text = '🏆 FAIT MAIN — SÉRIE LIMITÉE';
+    var h1 = defaultBlock('heading');
+    h1.text = 'Notre collection';
+    h1.align = 'center';
+    var cols = defaultBlock('columns');
+    var c1 = defaultBlock('card'); c1.title='Leurre Creuse N°1'; c1.desc='Surface, 8cm, coloris naturel.'; c1.price='9,90 €'; cols.cols[0].blocks=[c1];
+    var c2 = defaultBlock('card'); c2.title='Leurre Creuse N°2'; c2.desc='Plongée lente, 10cm, coloris vif.'; c2.price='11,90 €'; cols.cols[1].blocks=[c2];
+    var h2 = defaultBlock('heading'); h2.text='Pourquoi nos leurres ?'; h2.align='center'; h2.bg='#f8fafc';
+    var list = defaultBlock('list'); list.bg='#f8fafc'; list.items='✅ Fabriqués à la main en classe\n✅ Matériaux résistants et durables\n✅ Testés en conditions réelles\n✅ Prix accessibles';
+    var price = defaultBlock('price'); price.price='9,90 € à 14,90 €'; price.label='La gamme complète'; price.oldPrice='';
+    var btn = defaultBlock('button'); btn.text='📩 Nous contacter pour commander'; btn.align='center';
+    var div = defaultBlock('divider');
+    var footer = defaultBlock('text'); footer.text='Projet pédagogique — Bac Pro MCV — Terminale — Lycée Eugène Chausson, Aubusson (23)'; footer.align='center'; footer.size='sm'; footer.color='#94a3b8'; footer.bg='#1e293b';
+    return [hero,badge,h1,cols,h2,list,price,btn,div,footer];
+  },
+  nl: function(){
+    var header = defaultBlock('nl_header');
+    var sp = defaultBlock('spacer'); sp.height=8;
+    var art = defaultBlock('nl_article'); art.title='🎣 Le leurre du mois : le Streamer Creuse'; art.text='Ce mois-ci, notre équipe vous présente le Streamer Creuse, notre bestseller. Taille 9cm, coloris bleu-argenté, idéal pour le brochet et la perche. Disponible en quantité limitée !';
+    var div = defaultBlock('divider');
+    var art2 = defaultBlock('nl_article'); art2.title='📅 Prochain atelier de fabrication'; art2.text='Nous organisons une démonstration de fabrication de leurres le 15 mai à 14h au lycée. Venez découvrir notre technique !';
+    var cta = defaultBlock('nl_cta');
+    var footer = defaultBlock('nl_footer');
+    return [header,sp,art,div,art2,cta,footer];
+  }
+};
+
+function loadTemplate(type){
+  if(state.pages[type].length>0 && !confirm('Remplacer le contenu actuel par le template ?')) return;
+  state.pages[type] = TEMPLATES[type]();
+  state.tab = type;
+  state.selected = null;
+  ['vente','nl'].forEach(function(x){ document.getElementById('tab-'+x).classList.toggle('active',x===type); });
+  renderCanvas();
+  renderProps();
+  toast('Template chargé !');
+}
+
+function switchTab(t){
+  state.tab=t; state.selected=null;
+  ['vente','nl'].forEach(function(x){ document.getElementById('tab-'+x).classList.toggle('active',x===t); });
+  renderCanvas(); renderProps();
+}
+
+function switchSTab(i){
+  state.stab=i;
+  document.getElementById('stab-blocks').style.display=i===0?'':'none';
+  document.getElementById('stab-props').style.display=i===1?'':'none';
+  document.querySelectorAll('.stab').forEach(function(b,j){ b.classList.toggle('active',j===i); });
+}
+
+function getBlocks(){ return state.pages[state.tab]; }
+
+function dragStart(e,type){
+  state.dragType=type;
+  if(e&&e.dataTransfer) e.dataTransfer.effectAllowed='copy';
+}
+
+function canvasDragOver(e){ e.preventDefault(); document.getElementById('canvas').classList.add('drag-over'); }
+function canvasDragLeave(){ document.getElementById('canvas').classList.remove('drag-over'); }
+function canvasDrop(e){
+  e.preventDefault(); document.getElementById('canvas').classList.remove('drag-over');
+  if(state.dragType){ addBlock(state.dragType); state.dragType=null; }
+}
+
+function addBlock(type){
+  var b=defaultBlock(type);
+  getBlocks().push(b);
+  state.selected=b.id;
+  renderCanvas(); switchSTab(1); renderProps();
+  toast('Bloc ajouté');
+}
+
+function deleteBlock(id){
+  state.pages[state.tab]=removeById(state.pages[state.tab],id);
+  if(state.selected===id) state.selected=null;
+  renderCanvas(); renderProps();
+}
+
+function removeById(arr,id){
+  return arr.filter(function(b){
+    if(b.type==='columns'&&b.cols) b.cols.forEach(function(c){ c.blocks=removeById(c.blocks,id); });
+    return b.id!==id;
+  });
+}
+
+function moveBlock(id,dir){
+  var arr=getBlocks(), idx=arr.findIndex(function(b){ return b.id===id; });
+  if(idx<0) return;
+  if(dir==='up'&&idx>0){ var t=arr[idx]; arr[idx]=arr[idx-1]; arr[idx-1]=t; }
+  if(dir==='down'&&idx<arr.length-1){ var t=arr[idx]; arr[idx]=arr[idx+1]; arr[idx+1]=t; }
+  renderCanvas();
+}
+
+function duplicateBlock(id){
+  var arr=getBlocks(), idx=arr.findIndex(function(b){ return b.id===id; });
+  if(idx<0) return;
+  var copy=JSON.parse(JSON.stringify(arr[idx]));
+  copy.id=uid();
+  arr.splice(idx+1,0,copy);
+  state.selected=copy.id;
+  renderCanvas(); renderProps();
+  toast('Bloc dupliqué');
+}
+
+function selectBlock(id){ state.selected=id; renderCanvas(); switchSTab(1); renderProps(); }
+
+function canvasClick(e){
+  if(e.target===document.getElementById('canvas')||e.target.classList.contains('canvas-empty')){ state.selected=null; renderProps(); }
+}
+
+function findBlock(arr,id){
+  for(var i=0;i<arr.length;i++){
+    if(arr[i].id===id) return arr[i];
+    if(arr[i].type==='columns'&&arr[i].cols){
+      for(var j=0;j<arr[i].cols.length;j++){
+        var f=findBlock(arr[i].cols[j].blocks,id);
+        if(f) return f;
+      }
+    }
+  }
+  return null;
+}
+
+function getSelected(){ return findBlock(getBlocks(),state.selected); }
+function setProp(key,val){ var b=getSelected(); if(!b) return; b[key]=val; renderCanvas(); }
+function setArrProp(key,idx,val){ var b=getSelected(); if(!b) return; b[key][idx]=val; renderCanvas(); }
+
+// RENDER CANVAS
+function renderCanvas(){
+  var canvas=document.getElementById('canvas');
+  var blocks=getBlocks();
+  document.getElementById('canvas-empty').style.display=blocks.length===0?'':'none';
+  canvas.querySelectorAll(':scope > .block-wrapper').forEach(function(el){ el.remove(); });
+  blocks.forEach(function(b){ canvas.appendChild(makeBlockEl(b)); });
+}
+
+function makeBlockEl(b){
+  var wrap=document.createElement('div');
+  wrap.className='block-wrapper'+(state.selected===b.id?' selected':'');
+  wrap.setAttribute('data-id',b.id);
+  wrap.onclick=function(e){ e.stopPropagation(); selectBlock(b.id); };
+  var actions=document.createElement('div');
+  actions.className='block-actions';
+  actions.innerHTML=
+    '<button class="block-action-btn" title="Monter" onclick="event.stopPropagation();moveBlock(\''+b.id+'\',\'up\')">↑</button>'+
+    '<button class="block-action-btn" title="Descendre" onclick="event.stopPropagation();moveBlock(\''+b.id+'\',\'down\')">↓</button>'+
+    '<button class="block-action-btn" title="Dupliquer" onclick="event.stopPropagation();duplicateBlock(\''+b.id+'\')">⧉</button>'+
+    '<button class="block-action-btn" style="background:rgba(180,30,30,.8)" title="Supprimer" onclick="event.stopPropagation();deleteBlock(\''+b.id+'\')">✕</button>';
+  wrap.appendChild(actions);
+  var inner=document.createElement('div');
+  inner.style.background=b.bg||'';
+  inner.style.padding=(b.padding||16)+'px';
+  inner.innerHTML=renderBlockHTML(b,true);
+  wrap.appendChild(inner);
+  return wrap;
+}
+
+function renderBlockHTML(b,edit){
+  switch(b.type){
+    case 'heading':{
+      var fs={xl:'28px',lg:'22px',md:'18px',sm:'14px'}[b.size]||'18px';
+      return '<div style="text-align:'+b.align+';font-family:'+b.font+';font-size:'+fs+';font-weight:'+(b.bold?'700':'400')+';color:'+b.color+'">'+esc(b.text)+'</div>';
+    }
+    case 'text':{
+      var fs={lg:'18px',md:'14px',sm:'12px'}[b.size]||'14px';
+      return '<div style="text-align:'+b.align+';font-family:'+b.font+';font-size:'+fs+';color:'+b.color+';line-height:1.7;white-space:pre-wrap">'+esc(b.text)+'</div>';
+    }
+    case 'hero':{
+      var bgStyle=b.imgUrl?'background:url(\''+b.imgUrl+'\') center/cover;':'background:'+b.bg+';';
+      return '<div style="'+bgStyle+'text-align:center;padding:48px 24px;position:relative">'+(b.imgUrl?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>':'')+
+        '<div style="position:relative;z-index:1">'+
+        '<h1 style="color:'+b.color+';font-size:34px;font-weight:800;margin-bottom:12px;text-shadow:0 1px 3px rgba(0,0,0,.3)">'+esc(b.text)+'</h1>'+
+        '<p style="color:'+b.color+';opacity:.9;font-size:16px;margin-bottom:24px">'+esc(b.subtext)+'</p>'+
+        '<button style="background:'+b.btnColor+';color:#fff;border:none;padding:13px 30px;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)">'+esc(b.btnText)+'</button>'+
+        '</div></div>';
+    }
+    case 'image':{
+      if(!b.imgUrl) return '<div style="text-align:'+b.align+'"><div style="display:inline-flex;background:#e2e8f0;border-radius:'+(b.radius||0)+'px;width:'+(b.width||100)+'%;max-width:100%;height:160px;align-items:center;justify-content:center;color:#94a3b8;font-size:13px">🖼 Image</div></div>';
+      return '<div style="text-align:'+b.align+'"><img src="'+b.imgUrl+'" alt="'+esc(b.alt||'')+'" style="max-width:'+(b.width||100)+'%;border-radius:'+(b.radius||0)+'px;display:inline-block" /></div>';
+    }
+    case 'button':{
+      var fs={lg:'16px',md:'14px',sm:'12px'}[b.size]||'14px';
+      return '<div style="text-align:'+b.align+'"><button style="background:'+b.btnColor+';color:'+b.color+';border:none;padding:10px 28px;border-radius:'+(b.radius||6)+'px;font-size:'+fs+';font-weight:700;cursor:pointer">'+esc(b.text)+'</button></div>';
+    }
+    case 'price':
+      return '<div style="text-align:center;padding:8px 0">'+(b.oldPrice?'<div style="text-decoration:line-through;color:#94a3b8;font-size:14px;margin-bottom:2px">'+esc(b.oldPrice)+'</div>':'')+
+        '<div style="font-size:40px;font-weight:900;color:'+b.accent+'">'+esc(b.price)+'</div>'+
+        '<div style="font-size:13px;color:'+b.color+';margin-top:4px">'+esc(b.label)+'</div></div>';
+    case 'list':{
+      var fs={lg:'16px',md:'14px',sm:'12px'}[b.size]||'14px';
+      var lines=(b.items||'').split('\n').filter(function(l){ return l.trim(); });
+      return '<ul style="list-style:none;padding:0;color:'+b.color+';font-size:'+fs+'">'+lines.map(function(l){ return '<li style="margin-bottom:8px;padding-left:0">'+esc(l)+'</li>'; }).join('')+'</ul>';
+    }
+    case 'badge':
+      return '<div style="text-align:'+b.align+'"><span style="background:'+b.bg+';color:'+b.color+';padding:5px 16px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.06em">'+esc(b.text)+'</span></div>';
+    case 'card':
+      return '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-width:260px;margin:0 auto">'+
+        (b.imgUrl?'<img src="'+b.imgUrl+'" style="width:100%;height:150px;object-fit:cover" />':'<div style="background:#e2e8f0;height:150px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:24px">🎣</div>')+
+        '<div style="padding:14px"><div style="font-weight:700;font-size:14px;margin-bottom:5px;color:#1e293b">'+esc(b.title)+'</div><div style="font-size:12px;color:#64748b;margin-bottom:10px;line-height:1.5">'+esc(b.desc)+'</div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:16px;color:'+(b.btnColor||'#2563eb')+'">'+esc(b.price)+'</span><button style="background:'+(b.btnColor||'#2563eb')+';color:#fff;border:none;padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">'+esc(b.btnText)+'</button></div></div></div>';
+    case 'gallery':{
+      var imgs=b.images||['','',''];
+      var cols=b.cols||3;
+      return '<div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:8px">'+
+        imgs.map(function(url,i){
+          return url?
+            '<img src="'+url+'" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:'+(b.radius||6)+'px" />':
+            '<div style="aspect-ratio:1;background:#e2e8f0;border-radius:'+(b.radius||6)+'px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:20px">🖼</div>';
+        }).join('')+'</div>';
+    }
+    case 'divider': return '<hr style="border:none;border-top:'+(b.height||1)+'px solid '+b.color+';margin:0" />';
+    case 'spacer': return '<div style="height:'+(b.height||32)+'px"></div>';
+    case 'columns':{
+      var colClass=b.layout||'col-2';
+      var cols=b.cols||[];
+      return '<div class="columns-layout '+colClass+'">'+cols.map(function(c){
+        var inner=c.blocks.map(function(cb){ return '<div style="background:'+cb.bg+';padding:'+(cb.padding||16)+'px">'+renderBlockHTML(cb,edit)+'</div>'; }).join('');
+        return '<div class="column-drop-zone"'+(edit?' ondragover="event.preventDefault();event.stopPropagation();this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="colDrop(event,\''+c.id+'\')"':'')+'>'+
+          (inner||'<div style="text-align:center;padding:20px 8px;font-size:11px;color:#94a3b8">Déposer un bloc ici</div>')+
+          '</div>';
+      }).join('')+'</div>';
+    }
+    case 'nl_header':
+      return '<div style="text-align:center;background:'+b.bg+';padding:28px 16px"><div style="font-size:24px;font-weight:800;color:'+b.color+'">'+esc(b.title)+'</div><div style="font-size:13px;color:'+b.color+';opacity:.7;margin-top:6px">'+esc(b.subtitle)+'</div></div>';
+    case 'nl_article':
+      return '<div>'+(b.imgUrl?'<img src="'+b.imgUrl+'" style="width:100%;border-radius:6px;margin-bottom:14px" />' :'')+
+        '<div style="font-size:17px;font-weight:700;margin-bottom:8px;color:#1e293b">'+esc(b.title)+'</div>'+
+        '<div style="font-size:14px;color:#374151;line-height:1.7">'+esc(b.text)+'</div></div>';
+    case 'nl_cta':
+      return '<div style="text-align:center;background:'+b.bg+';padding:28px 20px;border-radius:8px"><p style="color:'+b.color+';font-size:16px;margin-bottom:18px;font-weight:600;line-height:1.5">'+esc(b.text)+'</p><button style="background:'+b.btnColor+';color:#fff;border:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer">'+esc(b.btnText)+'</button></div>';
+    case 'nl_footer':
+      return '<div style="border-top:1px solid #e2e8f0;padding-top:14px;font-size:11px;color:'+b.color+';text-align:center;line-height:2;white-space:pre-wrap">'+esc(b.text)+'</div>';
+    default: return '<div style="padding:8px;background:#f1f5f9;border-radius:4px;font-size:12px;color:#64748b;text-align:center">Bloc : '+b.type+'</div>';
+  }
+}
+
+function colDrop(e,colId){
+  e.preventDefault(); e.stopPropagation();
+  e.currentTarget.classList.remove('drag-over');
+  if(!state.dragType) return;
+  var nb=defaultBlock(state.dragType); state.dragType=null;
+  getBlocks().forEach(function(b){
+    if(b.type==='columns'&&b.cols) b.cols.forEach(function(c){ if(c.id===colId) c.blocks.push(nb); });
+  });
+  state.selected=nb.id; renderCanvas(); switchSTab(1); renderProps();
+}
+
+function esc(str){ if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// PROPS PANEL
+function renderProps(){
+  var el=document.getElementById('props-content');
+  var b=getSelected();
+  if(!b){ el.innerHTML='<div class="no-selection">Cliquez sur un bloc pour modifier ses propriétés.</div>'; return; }
+  var h='<div class="props-panel">';
+  h+='<div class="section-label" style="margin-top:0">Apparence du bloc</div>';
+  h+=pBg(b)+pPadding(b);
+  h+='<div class="sep"></div>';
+  switch(b.type){
+    case 'heading':
+      h+=pLabel('Texte')+'<input class="prop-input" value="'+esc(b.text)+'" oninput="setProp(\'text\',this.value)" />';
+      h+=pLabel('Police')+pFonts(b)+pLabel('Taille')+pSizes(b,['xl','lg','md','sm'],['XL','Grande','Normale','Petite']);
+      h+=pLabel('Couleur texte')+pColors(b,'color')+pLabel('Alignement')+pAlign(b);
+      h+=pLabel('Gras')+'<input type="checkbox" '+(b.bold?'checked':'')+' onchange="setProp(\'bold\',this.checked)" style="width:16px;height:16px;cursor:pointer;margin-top:4px" />';
+      break;
+    case 'text':
+      h+=pLabel('Contenu')+'<textarea class="prop-textarea" oninput="setProp(\'text\',this.value)">'+esc(b.text)+'</textarea>';
+      h+=pLabel('Police')+pFonts(b)+pLabel('Taille')+pSizes(b,['lg','md','sm'],['Grande','Normale','Petite']);
+      h+=pLabel('Couleur')+pColors(b,'color')+pLabel('Alignement')+pAlign(b);
+      break;
+    case 'hero':
+      h+=pLabel('Titre')+'<input class="prop-input" value="'+esc(b.text)+'" oninput="setProp(\'text\',this.value)" />';
+      h+=pLabel('Sous-titre')+'<input class="prop-input" value="'+esc(b.subtext)+'" oninput="setProp(\'subtext\',this.value)" />';
+      h+=pLabel('Texte bouton')+'<input class="prop-input" value="'+esc(b.btnText)+'" oninput="setProp(\'btnText\',this.value)" />';
+      h+=pLabel('Couleur bouton')+pColors(b,'btnColor');
+      h+=pLabel('Image de fond (URL ou upload)')+'<input class="prop-input" placeholder="https://..." value="'+esc(b.imgUrl||'')+'" oninput="setProp(\'imgUrl\',this.value)" />';
+      h+=pUpload('imgUrl');
+      break;
+    case 'image':
+      h+=pLabel('Image URL')+'<input class="prop-input" placeholder="https://..." value="'+esc(b.imgUrl||'')+'" oninput="setProp(\'imgUrl\',this.value)" />';
+      h+=pUpload('imgUrl')+pLabel('Largeur (%)')+pRange(b,'width',20,100,'%');
+      h+=pLabel('Coins arrondis')+pRange(b,'radius',0,40,'px')+pLabel('Alignement')+pAlign(b);
+      break;
+    case 'button':
+      h+=pLabel('Texte')+'<input class="prop-input" value="'+esc(b.text)+'" oninput="setProp(\'text\',this.value)" />';
+      h+=pLabel('Couleur bouton')+pColors(b,'btnColor')+pLabel('Couleur texte')+pColors(b,'color');
+      h+=pLabel('Taille')+pSizes(b,['lg','md','sm'],['Grand','Normal','Petit']);
+      h+=pLabel('Alignement')+pAlign(b)+pLabel('Arrondi')+pRange(b,'radius',0,30,'px');
+      break;
+    case 'price':
+      h+=pLabel('Prix')+'<input class="prop-input" value="'+esc(b.price)+'" oninput="setProp(\'price\',this.value)" />';
+      h+=pLabel('Ancien prix (barré, optionnel)')+'<input class="prop-input" value="'+esc(b.oldPrice||'')+'" placeholder="ex: 15,90 €" oninput="setProp(\'oldPrice\',this.value)" />';
+      h+=pLabel('Libellé')+'<input class="prop-input" value="'+esc(b.label)+'" oninput="setProp(\'label\',this.value)" />';
+      h+=pLabel('Couleur accent')+pColors(b,'accent');
+      break;
+    case 'list':
+      h+=pLabel('Éléments (1 par ligne)')+'<textarea class="prop-textarea" style="min-height:100px" oninput="setProp(\'items\',this.value)">'+esc(b.items)+'</textarea>';
+      h+=pLabel('Taille')+pSizes(b,['lg','md','sm'],['Grande','Normale','Petite'])+pLabel('Couleur')+pColors(b,'color');
+      break;
+    case 'badge':
+      h+=pLabel('Texte')+'<input class="prop-input" value="'+esc(b.text)+'" oninput="setProp(\'text\',this.value)" />';
+      h+=pLabel('Fond badge')+pColors(b,'bg')+pLabel('Couleur texte')+pColors(b,'color');
+      h+=pLabel('Alignement')+pAlign(b);
+      break;
+    case 'card':
+      h+=pLabel('Nom du produit')+'<input class="prop-input" value="'+esc(b.title)+'" oninput="setProp(\'title\',this.value)" />';
+      h+=pLabel('Description')+'<input class="prop-input" value="'+esc(b.desc)+'" oninput="setProp(\'desc\',this.value)" />';
+      h+=pLabel('Prix')+'<input class="prop-input" value="'+esc(b.price)+'" oninput="setProp(\'price\',this.value)" />';
+      h+=pLabel('Texte bouton')+'<input class="prop-input" value="'+esc(b.btnText)+'" oninput="setProp(\'btnText\',this.value)" />';
+      h+=pLabel('Couleur bouton')+pColors(b,'btnColor');
+      h+=pLabel('Image URL')+'<input class="prop-input" placeholder="https://..." value="'+esc(b.imgUrl||'')+'" oninput="setProp(\'imgUrl\',this.value)" />';
+      h+=pUpload('imgUrl');
+      break;
+    case 'gallery':
+      h+=pLabel('Nombre de colonnes')+pSizes(b,['2','3'],['2 colonnes','3 colonnes']);
+      h+=pLabel('Coins arrondis')+pRange(b,'radius',0,20,'px');
+      (b.images||[]).forEach(function(url,i){
+        h+=pLabel('Image '+( i+1)+' URL')+'<input class="prop-input" placeholder="https://..." value="'+esc(url)+'" oninput="setArrProp(\'images\','+i+',this.value)" />';
+        h+='<label class="img-upload-btn">📁 Upload image '+(i+1)+'<input type="file" accept="image/*" style="display:none" onchange="uploadArrImg(event,\'images\','+i+')" /></label>';
+      });
+      break;
+    case 'divider':
+      h+=pLabel('Couleur')+pColors(b,'color')+pLabel('Épaisseur')+pRange(b,'height',1,8,'px');
+      break;
+    case 'spacer':
+      h+=pLabel('Hauteur')+pRange(b,'height',8,120,'px');
+      break;
+    case 'columns':
+      h+=pLabel('Disposition');
+      h+='<div class="size-row">';
+      [['col-2','2 égales'],['col-3','3 colonnes'],['col-left','Gauche large'],['col-right','Droite large']].forEach(function(o){
+        h+='<button class="size-btn'+(b.layout===o[0]?' active':'')+'" onclick="setProp(\'layout\',\''+o[0]+'\')">'+o[1]+'</button>';
+      });
+      h+='</div>';
+      h+='<p style="font-size:11px;color:#94a3b8;margin-top:6px;line-height:1.5">Glissez des blocs dans chaque colonne depuis l\'onglet "Blocs".</p>';
+      break;
+    case 'nl_header':
+      h+=pLabel('Titre newsletter')+'<input class="prop-input" value="'+esc(b.title)+'" oninput="setProp(\'title\',this.value)" />';
+      h+=pLabel('Sous-titre / Numéro')+'<input class="prop-input" value="'+esc(b.subtitle)+'" oninput="setProp(\'subtitle\',this.value)" />';
+      h+=pLabel('Couleur texte')+pColors(b,'color');
+      break;
+    case 'nl_article':
+      h+=pLabel('Titre article')+'<input class="prop-input" value="'+esc(b.title)+'" oninput="setProp(\'title\',this.value)" />';
+      h+=pLabel('Contenu')+'<textarea class="prop-textarea" style="min-height:80px" oninput="setProp(\'text\',this.value)">'+esc(b.text)+'</textarea>';
+      h+=pLabel('Image URL')+'<input class="prop-input" placeholder="https://..." value="'+esc(b.imgUrl||'')+'" oninput="setProp(\'imgUrl\',this.value)" />';
+      h+=pUpload('imgUrl');
+      break;
+    case 'nl_cta':
+      h+=pLabel('Texte accrocheur')+'<textarea class="prop-textarea" oninput="setProp(\'text\',this.value)">'+esc(b.text)+'</textarea>';
+      h+=pLabel('Texte bouton')+'<input class="prop-input" value="'+esc(b.btnText)+'" oninput="setProp(\'btnText\',this.value)" />';
+      h+=pLabel('Fond')+pColors(b,'bg')+pLabel('Couleur bouton')+pColors(b,'btnColor');
+      break;
+    case 'nl_footer':
+      h+=pLabel('Texte pied de page')+'<textarea class="prop-textarea" oninput="setProp(\'text\',this.value)">'+esc(b.text)+'</textarea>';
+      h+=pLabel('Couleur')+pColors(b,'color');
+      break;
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function pLabel(t){ return '<label class="prop-label">'+t+'</label>'; }
+function pBg(b){ return pLabel('Fond du bloc')+'<div class="color-row">'+COLORS.map(function(c){ return '<div class="color-swatch'+(b.bg===c?' active':'')+'" style="background:'+c+';border:1px solid #cbd5e1" onclick="setProp(\'bg\',\''+c+'\')" title="'+c+'"></div>'; }).join('')+'<input type="color" value="'+(b.bg||'#ffffff')+'" oninput="setProp(\'bg\',this.value)" style="width:22px;height:22px;border-radius:50%;border:1px solid #cbd5e1;cursor:pointer;padding:0" /></div>'; }
+function pPadding(b){ return pLabel('Espacement interne (padding)')+'<div class="range-row"><input type="range" min="0" max="64" value="'+(b.padding||16)+'" step="4" oninput="setProp(\'padding\',+this.value);this.nextElementSibling.textContent=this.value+\'px\'" /><span class="range-val">'+(b.padding||16)+'px</span></div>'; }
+function pRange(b,key,min,max,unit){ return '<div class="range-row"><input type="range" min="'+min+'" max="'+max+'" value="'+(b[key]||0)+'" oninput="setProp(\''+key+'\',+this.value);this.nextElementSibling.textContent=this.value+\''+unit+'\'" /><span class="range-val">'+(b[key]||0)+unit+'</span></div>'; }
+function pColors(b,key){ return '<div class="color-row">'+COLORS.map(function(c){ return '<div class="color-swatch'+(b[key]===c?' active':'')+'" style="background:'+c+';border:1px solid #cbd5e1" onclick="setProp(\''+key+'\',\''+c+'\')" title="'+c+'"></div>'; }).join('')+'<input type="color" value="'+(b[key]||'#000000')+'" oninput="setProp(\''+key+'\',this.value)" style="width:22px;height:22px;border-radius:50%;border:1px solid #cbd5e1;cursor:pointer;padding:0" /></div>'; }
+function pFonts(b){ return '<div class="font-row">'+FONTS.map(function(f,i){ return '<button class="font-btn'+(b.font===f?' active':'')+'" style="font-family:'+f+'" onclick="setProp(\'font\',\''+f+'\')">'+FONT_LABELS[i]+'</button>'; }).join('')+'</div>'; }
+function pSizes(b,vals,labels){ return '<div class="size-row">'+vals.map(function(v,i){ return '<button class="size-btn'+(b.size===v||b.cols===parseInt(v)?(' active'):'')+'" onclick="setProp(\''+(Number.isInteger(parseInt(v))&&vals[0].length<3?'cols':'size')+'\','+(isNaN(parseInt(v))?"'"+v+"'":'parseInt(\''+v+'\'')+')">'+labels[i]+'</button>'; }).join('')+'</div>'; }
+function pAlign(b){ return '<div class="align-row">'+[['left','◀'],['center','◼'],['right','▶']].map(function(a){ return '<button class="align-btn'+(b.align===a[0]?' active':'')+'" onclick="setProp(\'align\',\''+a[0]+'\')">'+a[1]+'</button>'; }).join('')+'</div>'; }
+function pUpload(key){ return '<label class="img-upload-btn">📁 Choisir une image depuis l\'ordi<input type="file" accept="image/*" style="display:none" onchange="uploadImg(event,\''+key+'\')" /></label>'; }
+
+function uploadImg(e,key){
+  var f=e.target.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(ev){ setProp(key,ev.target.result); renderProps(); };
+  r.readAsDataURL(f);
+}
+
+function uploadArrImg(e,key,idx){
+  var f=e.target.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(ev){ setArrProp(key,idx,ev.target.result); renderProps(); };
+  r.readAsDataURL(f);
+}
+
+// SAVE / LOAD
+function saveToLocal(){
+  try{
+    localStorage.setItem('builder_pages', JSON.stringify(state.pages));
+    toast('Sauvegardé !');
+  } catch(e){ toast('Erreur de sauvegarde'); }
+}
+
+function loadFromLocal(){
+  try{
+    var saved=localStorage.getItem('builder_pages');
+    if(saved){ state.pages=JSON.parse(saved); renderCanvas(); toast('Contenu restauré'); }
+  } catch(e){}
+}
+
+function clearCanvas(){
+  if(!confirm('Vider cette page ?')) return;
+  state.pages[state.tab]=[]; state.selected=null; renderCanvas(); renderProps();
+  toast('Page vidée');
+}
+
+// PREVIEW & EXPORT
+function buildFullHTML(blocks, title){
+  var body=blocks.map(function(b){
+    return '<div style="background:'+b.bg+';padding:'+(b.padding||16)+'px">'+renderBlockHTML(b,false)+'</div>';
+  }).join('');
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>'+esc(title)+'</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,Arial,sans-serif;max-width:720px;margin:0 auto}.columns-layout{display:grid;gap:12px}.col-2{grid-template-columns:1fr 1fr}.col-3{grid-template-columns:1fr 1fr 1fr}.col-left{grid-template-columns:2fr 1fr}.col-right{grid-template-columns:1fr 2fr}@media(max-width:520px){.col-2,.col-3,.col-left,.col-right{grid-template-columns:1fr}}img{max-width:100%}</style></head><body>'+body+'</body></html>';
+}
+
+function previewPage(){
+  var title=state.tab==='vente'?'Page de vente':'Newsletter';
+  document.getElementById('preview-title').textContent=title;
+  var html=buildFullHTML(getBlocks(),title);
+  var iframe=document.createElement('iframe');
+  iframe.style.cssText='width:100%;border:none;min-height:500px';
+  iframe.srcdoc=html;
+  var pb=document.getElementById('preview-body');
+  pb.innerHTML=''; pb.appendChild(iframe);
+  document.getElementById('preview-modal').style.display='flex';
+}
+
+function closePreview(){ document.getElementById('preview-modal').style.display='none'; }
+
+function exportHTML(){
+  var title=state.tab==='vente'?'page_de_vente':'newsletter';
+  var html=buildFullHTML(getBlocks(),state.tab==='vente'?'Page de vente':'Newsletter');
+  var blob=new Blob([html],{type:'text/html'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=title+'.html'; a.click();
+  toast('Fichier exporté !');
+}
+
+function exportFromPreview(){ closePreview(); exportHTML(); }
+
+// TOAST
+function toast(msg){
+  var t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(function(){ t.remove(); },2200);
+}
+
+// INIT
+loadFromLocal();
+renderCanvas();
+</script>
+</body>
+</html>
